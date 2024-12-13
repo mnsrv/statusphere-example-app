@@ -41,6 +41,9 @@ async function getSessionAgent(
   const session = await getIronSession<Session>(req, res, {
     cookieName: 'sid',
     password: env.COOKIE_SECRET,
+    cookieOptions: {
+      secure: env.NODE_ENV === 'production',
+    },
   })
   if (!session.did) return null
   try {
@@ -77,6 +80,9 @@ export const createRouter = (ctx: AppContext) => {
         const clientSession = await getIronSession<Session>(req, res, {
           cookieName: 'sid',
           password: env.COOKIE_SECRET,
+          cookieOptions: {
+            secure: env.NODE_ENV === 'production',
+          },
         })
         assert(!clientSession.did, 'session already exists')
         clientSession.did = session.did
@@ -136,6 +142,9 @@ export const createRouter = (ctx: AppContext) => {
       const session = await getIronSession<Session>(req, res, {
         cookieName: 'sid',
         password: env.COOKIE_SECRET,
+        cookieOptions: {
+          secure: env.NODE_ENV === 'production',
+        },
       })
       await session.destroy()
       return res.redirect('/')
