@@ -91,7 +91,7 @@ export const createRouter = (ctx: AppContext) => {
         ctx.logger.error({ err }, 'oauth callback failed')
         return res.redirect('/?error')
       }
-      return res.redirect('/')
+      return res.redirect('/statuses')
     })
   )
 
@@ -207,6 +207,60 @@ export const createRouter = (ctx: AppContext) => {
           })
         )
       )
+    })
+  )
+
+  router.get(
+    '/statuses',
+    handler(async (req, res) => {
+      // If the user is signed in, get an agent which communicates with their server
+      const agent = await getSessionAgent(req, res, ctx)
+      if (!agent) {
+        return res
+          .status(401)
+          .type('html')
+          .send('<h1>Error: Session required</h1>')
+      }
+
+      const { data: repoStatusesData } = await agent.com.atproto.repo.listRecords({
+        repo: agent.assertDid,
+        collection: 'xyz.statusphere.status',
+        limit: 10,
+      })
+
+      // Map the records to our SQLite schema
+      const repoStatuses = repoStatusesData.records
+      .filter((record): record is typeof record & { value: Status.Record } => {
+        return Status.isRecord(record.value) && Status.validateRecord(record.value).success
+      })
+      .map((record) => {
+        const value = record.value
+        return {
+          uri: record.uri,
+          authorDid: agent.assertDid,
+          status: value.status,
+          createdAt: value.createdAt,
+          indexedAt: new Date().toISOString(),
+        }
+      })
+
+      try {
+        // Optimistically update our SQLite
+        // This isn't strictly necessary because the write event will be
+        // handled in #/firehose/ingestor.ts, but it ensures that future reads
+        // will be up-to-date after this method finishes.
+        await ctx.db
+          .insertInto('status')
+          .values(repoStatuses)
+          .execute()
+      } catch (err) {
+        ctx.logger.warn(
+          { err },
+          'failed to update computed view; ignoring as it should be caught by the firehose'
+        )
+      }
+
+      return res.redirect('/')
     })
   )
 
