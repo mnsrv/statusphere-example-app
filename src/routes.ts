@@ -147,6 +147,14 @@ export const createRouter = (ctx: AppContext) => {
         },
       })
       await session.destroy()
+      try {
+        await ctx.db.deleteFrom('status').execute()
+      } catch (err) {
+        ctx.logger.warn(
+          { err },
+          'failed to delete statuses'
+        )
+      }
       return res.redirect('/')
     })
   )
