@@ -89,7 +89,7 @@ function content({ statuses, didHandleMap, profile, myStatus }: Props) {
       </form>
       ${statuses.map((status, i) => {
         const handle = didHandleMap[status.authorDid] || status.authorDid
-        const date = ts(status)
+        const { dateStr, timeStr } = ts(status)
         return html`
           <div class=${i === 0 ? 'status-line no-line' : 'status-line'}>
             <div>
@@ -97,9 +97,9 @@ function content({ statuses, didHandleMap, profile, myStatus }: Props) {
             </div>
             <div class="desc">
               <a class="author" href=${toBskyLink(handle)}>@${handle}</a>
-              ${date === TODAY
-                ? `is feeling ${status.status} today`
-                : `was feeling ${status.status} on ${date}`}
+              ${dateStr === TODAY
+                ? `is feeling ${status.status} today at ${timeStr}`
+                : `was feeling ${status.status} on ${dateStr} at ${timeStr}`}
             </div>
           </div>
         `
@@ -115,6 +115,8 @@ function toBskyLink(did: string) {
 function ts(status: Status) {
   const createdAt = new Date(status.createdAt)
   const indexedAt = new Date(status.indexedAt)
-  if (createdAt < indexedAt) return createdAt.toDateString()
-  return indexedAt.toDateString()
+  const date = createdAt < indexedAt ? createdAt : indexedAt
+  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const dateStr = date.toDateString()
+  return { dateStr, timeStr }
 }
